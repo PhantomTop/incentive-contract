@@ -7,9 +7,8 @@ use cosmwasm_std::{Uint128, Addr};
 pub struct InstantiateMsg {
     /// Owner if none set to info.sender.
     pub owner: Option<String>,
-    pub fot_token_address: Addr,
-    pub bfot_token_address: Addr,
-    pub gfot_token_address: Addr,
+    pub reward_token_address: Addr,
+    pub lp_token_address: Addr,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -21,8 +20,8 @@ pub enum ExecuteMsg {
         new_owner: Option<String>,
     },
     Receive(Cw20ReceiveMsg),
-    WithdrawFot { },
-    WithdrawGFot { },
+    WithdrawReward { },
+    WithdrawLp { },
     ClaimReward { },
     Unstake {}
 }
@@ -53,11 +52,10 @@ pub enum QueryMsg {
 #[serde(rename_all = "snake_case")]
 pub struct ConfigResponse {
     pub owner: Option<String>,
-    pub fot_token_address: String,
-    pub bfot_token_address: String,
-    pub gfot_token_address: String,
-    pub fot_amount: Uint128,
-    pub gfot_amount: Uint128,
+    pub reward_token_address: String,
+    pub lp_token_address: String,
+    pub reward_amount: Uint128,
+    pub lp_amount: Uint128,
     pub last_time: u64
 
 }

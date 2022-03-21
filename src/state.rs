@@ -9,11 +9,10 @@ use cw_storage_plus::{Item, Map};
 pub struct Config {
     /// Owner If None set, contract is frozen.
     pub owner: Option<Addr>,
-    pub fot_token_address: Addr,
-    pub bfot_token_address: Addr,
-    pub gfot_token_address: Addr,
-    pub fot_amount: Uint128,
-    pub gfot_amount: Uint128,
+    pub reward_token_address: Addr,
+    pub lp_token_address: Addr,
+    pub reward_amount: Uint128,
+    pub lp_amount: Uint128,
     pub last_time: u64,
     pub addresses: Vec<Addr>
     
