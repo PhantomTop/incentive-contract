@@ -7,8 +7,20 @@ use cosmwasm_std::{Uint128, Addr};
 pub struct InstantiateMsg {
     /// Owner if none set to info.sender.
     pub owner: Option<String>,
-    pub reward_token_address: Addr,
-    pub lp_token_address: Addr,
+    pub fot_token_address: Addr,
+    pub bfot_token_address: Addr,
+    pub gfot_token_address: Addr,
+    pub daily_fot_amount: Uint128,
+    pub apy_prefix: Uint128,
+    pub reward_interval: u64
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct StakerInfo {
+    pub address: Addr,
+    pub amount: Uint128,
+    pub reward: Uint128,
+    pub last_time: u64
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -19,11 +31,26 @@ pub enum ExecuteMsg {
         /// but owner cannot register new stages.
         new_owner: Option<String>,
     },
+    UpdateConstants {
+        daily_fot_amount: Uint128,
+        apy_prefix: Uint128,
+        reward_interval: u64
+    },
     Receive(Cw20ReceiveMsg),
-    WithdrawReward { },
-    WithdrawLp { },
+    WithdrawFot { },
+    WithdrawGFot { },
     ClaimReward { },
-    Unstake {}
+    Unstake {},
+    AddStakers {
+        stakers: Vec<StakerInfo>
+    },
+    RemoveStaker {
+        address: Addr
+    },
+    RemoveAllStakers {
+        start_after: Option<String>,
+        limit: Option<u32>
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -52,11 +79,14 @@ pub enum QueryMsg {
 #[serde(rename_all = "snake_case")]
 pub struct ConfigResponse {
     pub owner: Option<String>,
-    pub reward_token_address: String,
-    pub lp_token_address: String,
-    pub reward_amount: Uint128,
-    pub lp_amount: Uint128,
-    pub last_time: u64
+    pub fot_token_address: String,
+    pub bfot_token_address: String,
+    pub gfot_token_address: String,
+    pub fot_amount: Uint128,
+    pub gfot_amount: Uint128,
+    pub daily_fot_amount: Uint128,
+    pub apy_prefix: Uint128,
+    pub reward_interval: u64
 
 }
 
@@ -72,18 +102,13 @@ pub struct StakerListResponse {
 
 /// Returns the vote (opinion as well as weight counted) as well as
 /// the address of the voter who submitted it
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-pub struct StakerInfo {
-    pub address: Addr,
-    pub amount: Uint128,
-    pub reward: Uint128
-}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct StakerResponse {
     pub address: Addr,
     pub amount: Uint128,
-    pub reward: Uint128
+    pub reward: Uint128,
+    pub last_time: u64
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct CountInfo {

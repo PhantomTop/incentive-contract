@@ -4,10 +4,13 @@
 PARAM=$1
 ####################################    Constants    ##################################################
 
-# #depends on mainnet or testnet
+#depends on mainnet or testnet
 # NODE="--node https://rpc-juno.itastakers.com:443"
 # CHAIN_ID=juno-1
 # DENOM="ujuno"
+# FOT_ADDRESS="juno1xmpenz0ykxfy8rxr3yc3d4dtqq4dpas4zz3xl6sh873us3vajlpshzp69d"
+# BFOT_ADDRESS="juno1vaeuky9hqacenay9nmuualugvv54tdhyt2wsvhnjasx9s946hhmqaq3kh7"
+# GFOT_ADDRESS="juno10ynpq4wchr4ruu6mhrfh29495ep4cja5vjnkhz3j5lrgcsap9vtssyeekl"
 
 ##########################################################################################
 
@@ -15,17 +18,17 @@ NODE="--node https://rpc.juno.giansalex.dev:443"
 #NODE="--node https://rpc.uni.junomint.com:443"
 CHAIN_ID=uni-2
 DENOM="ujunox"
-
-LP_TOKEN_ADDRESS=""
-REWARD_TOKEN_ADDRESS=""
+FOT_ADDRESS="juno1yqmcu5uw27mzkacputegtg46cx55ylwgcnatjy3mejxqdjsx3kmq5a280s"
+BFOT_ADDRESS="juno1f69f4902tgkuthp26ghwjwta9e5ulqdelcmdxp8acevw89w0028sflaunv"
+GFOT_ADDRESS="juno18hh4dflvfdcuklc9q4ghlr83fy5k4sdx6rgfzzwhdfqznsj4xjzqdsn5cc"
 
 ##########################################################################################
 #not depends
 NODECHAIN=" $NODE --chain-id $CHAIN_ID"
-TXFLAG=" $NODECHAIN --gas-prices 0.0025$DENOM --gas auto --gas-adjustment 1.3"
+TXFLAG=" $NODECHAIN --gas-prices 0.025$DENOM --gas auto --gas-adjustment 1.3"
 WALLET="--from workshop"
 
-WASMFILE="artifacts/marbleincentive.wasm"
+WASMFILE="artifacts/gfotstaking.wasm"
 
 FILE_UPLOADHASH="uploadtx.txt"
 FILE_CONTRACT_ADDR="contractaddr.txt"
@@ -33,7 +36,7 @@ FILE_CODE_ID="code.txt"
 
 ADDR_WORKSHOP="juno1htjut8n7jv736dhuqnad5mcydk6tf4ydeaan4s"
 ADDR_ACHILLES="juno15fg4zvl8xgj3txslr56ztnyspf3jc7n9j44vhz"
-
+ADDR_CEM="juno14u54rmpw78wux6vvrdx2vpdh998aaxxmrn6p7s"
 
 ###################################################################################################
 ###################################################################################################
@@ -89,7 +92,7 @@ RustBuild() {
     RUSTFLAGS='-C link-arg=-s' cargo wasm
 
     mkdir artifacts
-    cp target/wasm32-unknown-unknown/release/marbleincentive.wasm $WASMFILE
+    cp target/wasm32-unknown-unknown/release/gfotstaking.wasm $WASMFILE
 }
 
 #Writing to FILE_UPLOADHASH
@@ -130,7 +133,7 @@ Instantiate() {
     
     #read from FILE_CODE_ID
     CODE_ID=$(cat $FILE_CODE_ID)
-    junod tx wasm instantiate $CODE_ID '{"owner":"'$ADDR_WORKSHOP'", "reward_token_address":"'$REWARD_TOKEN_ADDRESS'","lp_token_address":"'$LP_TOKEN_ADDRESS'", }' --label "Marble Incentive" $WALLET $TXFLAG -y
+    junod tx wasm instantiate $CODE_ID '{"owner":"'$ADDR_WORKSHOP'", "fot_token_address":"'$FOT_ADDRESS'","bfot_token_address":"'$BFOT_ADDRESS'", "gfot_token_address":"'$GFOT_ADDRESS'", "daily_fot_amount":"300000000000000", "apy_prefix":"109500000", "reward_interval":3600}' --label "GFOT Updated Staking" $WALLET $TXFLAG -y
 }
 
 #Get Instantiated Contract Address
@@ -155,59 +158,74 @@ GetContractAddress() {
 ###################################################################################################
 ###################################################################################################
 #Send initial tokens
-SendReward() {
-    CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod tx wasm execute $REWARD_TOKEN_ADDRESS '{"send":{"amount":"1000000","contract":"'$CONTRACT_INCENTIVE'","msg":""}}' $WALLET $TXFLAG -y
+SendFot() {
+    CONTRACT_GFOTSTAKING=$(cat $FILE_CONTRACT_ADDR)
+    junod tx wasm execute $FOT_ADDRESS '{"send":{"amount":"3000000000000","contract":"'$CONTRACT_GFOTSTAKING'","msg":""}}' $WALLET $TXFLAG -y
 }
 
-SendLP() {
-    CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod tx wasm execute $LP_TOKEN_ADDRESS '{"send":{"amount":"1000000","contract":"'$CONTRACT_INCENTIVE'","msg":""}}' $WALLET $TXFLAG -y
+SendGFot() {
+    CONTRACT_GFOTSTAKING=$(cat $FILE_CONTRACT_ADDR)
+    junod tx wasm execute $GFOT_ADDRESS '{"send":{"amount":"224890846943","contract":"'$CONTRACT_GFOTSTAKING'","msg":""}}' $WALLET $TXFLAG -y
 }
 
-WithdrawReward() {
-    CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod tx wasm execute $CONTRACT_INCENTIVE '{"withdraw_reward":{}}' $WALLET $TXFLAG -y
+RemoveStaker() {
+    CONTRACT_GFOTSTAKING=$(cat $FILE_CONTRACT_ADDR)
+    junod tx wasm execute $CONTRACT_GFOTSTAKING '{"remove_staker":{"address":"'$ADDR_WORKSHOP'"}}' $WALLET $TXFLAG -y
 }
 
-WithdrawLP() {
-    CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod tx wasm execute $CONTRACT_INCENTIVE '{"withdraw_lp":{}}' $WALLET $TXFLAG -y
+RemoveAllStakers() {
+    CONTRACT_GFOTSTAKING=$(cat $FILE_CONTRACT_ADDR)
+    junod tx wasm execute $CONTRACT_GFOTSTAKING '{"remove_all_stakers":{}}' $WALLET $TXFLAG -y
+}
+
+WithdrawFot() {
+    CONTRACT_GFOTSTAKING=$(cat $FILE_CONTRACT_ADDR)
+    junod tx wasm execute $CONTRACT_GFOTSTAKING '{"withdraw_fot":{}}' $WALLET $TXFLAG -y
+}
+
+WithdrawGFot() {
+    CONTRACT_GFOTSTAKING=$(cat $FILE_CONTRACT_ADDR)
+    junod tx wasm execute $CONTRACT_GFOTSTAKING '{"withdraw_g_fot":{}}' $WALLET $TXFLAG -y
 }
 
 ClaimReward() {
-    CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod tx wasm execute $CONTRACT_INCENTIVE '{"claim_reward":{}}' $WALLET $TXFLAG -y
+    CONTRACT_GFOTSTAKING=$(cat $FILE_CONTRACT_ADDR)
+    junod tx wasm execute $CONTRACT_GFOTSTAKING '{"claim_reward":{}}' $WALLET $TXFLAG -y
 }
 
 Unstake() {
-    CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod tx wasm execute $CONTRACT_INCENTIVE '{"unstake":{}}' $WALLET $TXFLAG -y
+    CONTRACT_GFOTSTAKING=$(cat $FILE_CONTRACT_ADDR)
+    junod tx wasm execute $CONTRACT_GFOTSTAKING '{"unstake":{}}' $WALLET $TXFLAG -y
 }
 
 UpdateConfig() {
-    CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod tx wasm execute $CONTRACT_INCENTIVE '{"update_config":{"new_owner":"'$ADDR_WORKSHOP'"}}' $WALLET $TXFLAG -y
+    CONTRACT_GFOTSTAKING=$(cat $FILE_CONTRACT_ADDR)
+    junod tx wasm execute $CONTRACT_GFOTSTAKING '{"update_config":{"new_owner":"'$ADDR_CEM'"}}' $WALLET $TXFLAG -y
+}
+
+UpdateConstants() {
+    CONTRACT_GFOTSTAKING=$(cat $FILE_CONTRACT_ADDR)
+    junod tx wasm execute $CONTRACT_GFOTSTAKING '{"update_constants":{"daily_fot_amount":"300000000", "apy_prefix":"109500000", "reward_interval": 600}}' $WALLET $TXFLAG -y
 }
 
 PrintConfig() {
-    CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod query wasm contract-state smart $CONTRACT_INCENTIVE '{"config":{}}' $NODECHAIN
+    CONTRACT_GFOTSTAKING=$(cat $FILE_CONTRACT_ADDR)
+    junod query wasm contract-state smart $CONTRACT_GFOTSTAKING '{"config":{}}' $NODECHAIN
 }
 
 PrintStaker() {
-    CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod query wasm contract-state smart $CONTRACT_INCENTIVE '{"staker":{"address":"'$ADDR_WORKSHOP'"}}' $NODECHAIN
+    CONTRACT_GFOTSTAKING=$(cat $FILE_CONTRACT_ADDR)
+    junod query wasm contract-state smart $CONTRACT_GFOTSTAKING '{"staker":{"address":"'$ADDR_WORKSHOP'"}}' $NODECHAIN
 }
 
 PrintListStakers() {
-    CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod query wasm contract-state smart $CONTRACT_INCENTIVE '{"list_stakers":{}}' $NODECHAIN
+    CONTRACT_GFOTSTAKING=$(cat $FILE_CONTRACT_ADDR)
+    junod query wasm contract-state smart $CONTRACT_GFOTSTAKING '{"list_stakers":{}}' $NODECHAIN
 }
 
 PrintAPY() {
-    CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod query wasm contract-state smart $CONTRACT_INCENTIVE '{"apy":{}}' $NODECHAIN
+    CONTRACT_GFOTSTAKING=$(cat $FILE_CONTRACT_ADDR)
+    junod query wasm contract-state smart $CONTRACT_GFOTSTAKING '{"apy":{}}' $NODECHAIN
 }
 
 #################################################################################
@@ -216,42 +234,56 @@ PrintWalletBalance() {
     echo "========================================="
     junod query bank balances $ADDR_WORKSHOP $NODECHAIN
     echo "========================================="
-    echo "Reward balance"
+    echo "FOT balance"
     echo "========================================="
-    junod query wasm contract-state smart $REWARD_TOKEN_ADDRESS '{"balance":{"address":"'$ADDR_WORKSHOP'"}}' $NODECHAIN
+    junod query wasm contract-state smart $FOT_ADDRESS '{"balance":{"address":"'$ADDR_WORKSHOP'"}}' $NODECHAIN
     echo "========================================="
-    echo "LP balance"
+    echo "BFOT balance"
     echo "========================================="
-    junod query wasm contract-state smart $LP_TOKEN_ADDRESS '{"balance":{"address":"'$ADDR_WORKSHOP'"}}' $NODECHAIN
+    junod query wasm contract-state smart $BFOT_ADDRESS '{"balance":{"address":"'$ADDR_WORKSHOP'"}}' $NODECHAIN
+    echo "========================================="
+    echo "GFOT balance"
+    echo "========================================="
+    junod query wasm contract-state smart $GFOT_ADDRESS '{"balance":{"address":"'$ADDR_WORKSHOP'"}}' $NODECHAIN
 }
 
 #################################### End of Function ###################################################
 if [[ $PARAM == "" ]]; then
     RustBuild
     Upload
-sleep 10
+sleep 12
     GetCode
-sleep 10
+sleep 12
     Instantiate
 sleep 10
     GetContractAddress
-# sleep 5
-#     SendReward
-# sleep 5
-#     SendFot
+sleep 10
+    SendFot
+# sleep 7
+#     SendGFot
+sleep 10
+    RemoveAllStakers
 # sleep 5
 #     Withdraw
-sleep 5
+sleep 7
     PrintConfig
-sleep 5
+sleep 7
     PrintWalletBalance
+# sleep 7
+#     RemoveStaker
 # sleep 5
-#     SendFot
-sleep 5
-    PrintStaker
+#     PrintStaker
 sleep 5
     PrintListStakers
 else
     $PARAM
 fi
+
+# OptimizeBuild
+# Upload
+# GetCode
+# Instantiate
+# GetContractAddress
+# CreateEscrow
+# TopUp
 
