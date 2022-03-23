@@ -1,19 +1,17 @@
-use std::collections::btree_set::Difference;
-
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, to_binary, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
-    WasmMsg, WasmQuery, QueryRequest, CosmosMsg, Order, Addr, Decimal, Storage, Api
+    attr, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    WasmMsg, WasmQuery, QueryRequest,Order, Addr, Storage
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, Cw20QueryMsg, Cw20CoinVerified};
-use cw20::{TokenInfoResponse, Balance};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, Cw20QueryMsg};
+use cw20::{TokenInfoResponse};
 use cw_utils::{maybe_addr};
 use cw_storage_plus::Bound;
 use crate::error::ContractError;
 use crate::msg::{
-    ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, ReceiveMsg, StakerListResponse, StakerInfo, CountInfo, StakerResponse
+    ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StakerListResponse, StakerInfo, StakerResponse
 };
 use crate::state::{
     Config, CONFIG, STAKERS
@@ -64,8 +62,8 @@ pub fn execute(
         ExecuteMsg::UpdateConfig { new_owner } => execute_update_config(deps, info, new_owner),
         ExecuteMsg::UpdateConstants { daily_reward_amount, apy_prefix , reward_interval} => execute_update_constants(deps, info, daily_reward_amount, apy_prefix, reward_interval),
         ExecuteMsg::Receive(msg) => try_receive(deps, env, info, msg),
-        ExecuteMsg::WithdrawReward {} => try_withdraw_reward(deps, env, info),
-        ExecuteMsg::WithdrawStake {} => try_withdraw_stake(deps, env, info),
+        ExecuteMsg::WithdrawReward {} => try_withdraw_reward(deps, info),
+        ExecuteMsg::WithdrawStake {} => try_withdraw_stake(deps, info),
         ExecuteMsg::ClaimReward {} => try_claim_reward(deps, env, info),
         ExecuteMsg::Unstake {} => try_unstake(deps, env, info),
         ExecuteMsg::AddStakers { stakers } => execute_add_stakers(deps, info, stakers),
@@ -76,10 +74,9 @@ pub fn execute(
 
 pub fn update_reward (
     storage: &mut dyn Storage,
-    api: &dyn Api,
     env: Env,
     address: Addr,
-    start_after:Option<String>
+    _start_after:Option<String>
 ) -> Result<Response, ContractError> {
     
     let exists = STAKERS.may_load(storage, address.clone())?;
@@ -120,8 +117,8 @@ pub fn try_receive(
 
     // Staking case
     if info.sender == cfg.stake_token_address {
-        update_reward(deps.storage, deps.api, env, user_addr.clone(), None)?;
-        let (mut amount, mut reward, mut last_time) = STAKERS.load(deps.storage, user_addr.clone())?;
+        update_reward(deps.storage,  env, user_addr.clone(), None)?;
+        let (mut amount, reward, last_time) = STAKERS.load(deps.storage, user_addr.clone())?;
         amount += wrapper.amount;
         STAKERS.save(deps.storage, user_addr.clone(), &(amount, reward, last_time))?;
         
@@ -158,7 +155,7 @@ pub fn try_claim_reward(
     info: MessageInfo
 ) -> Result<Response, ContractError> {
 
-    update_reward(deps.storage, deps.api, env, info.sender.clone(), None)?;
+    update_reward(deps.storage, env, info.sender.clone(), None)?;
     let mut cfg = CONFIG.load(deps.storage)?;
 
     let (amount, reward, last_time) = STAKERS.load(deps.storage, info.sender.clone())?;
@@ -204,7 +201,7 @@ pub fn try_unstake(
     info: MessageInfo
 ) -> Result<Response, ContractError> {
 
-    update_reward(deps.storage, deps.api, env, info.sender.clone(), None)?;
+    update_reward(deps.storage, env, info.sender.clone(), None)?;
     let mut cfg = CONFIG.load(deps.storage)?;
     let (amount, reward, last_time) = STAKERS.load(deps.storage, info.sender.clone())?;
     
@@ -340,7 +337,7 @@ pub fn execute_remove_all_stakers(
     deps: DepsMut,
     info: MessageInfo,
     start_after: Option<String>,
-    limit: Option<u32>
+    _limit: Option<u32>
 ) -> Result<Response, ContractError> {
     // authorize owner
     check_owner(&deps, &info)?;
@@ -363,7 +360,7 @@ pub fn execute_remove_all_stakers(
     Ok(Response::new().add_attribute("action", "remove_all_stakers"))
 }
 
-pub fn try_withdraw_reward(deps: DepsMut, env:Env, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn try_withdraw_reward(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     
     check_owner(&deps, &info)?;
     let mut cfg = CONFIG.load(deps.storage)?;
@@ -391,7 +388,7 @@ pub fn try_withdraw_reward(deps: DepsMut, env:Env, info: MessageInfo) -> Result<
         ]));
 }
 
-pub fn try_withdraw_stake(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn try_withdraw_stake(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     
     check_owner(&deps, &info)?;
 

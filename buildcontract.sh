@@ -5,20 +5,22 @@ PARAM=$1
 ####################################    Constants    ##################################################
 
 #depends on mainnet or testnet
-# NODE="--node https://rpc-juno.itastakers.com:443"
-# CHAIN_ID=juno-1
-# DENOM="ujuno"
-# REWARD_TOKEN_ADDRESS="juno1xmpenz0ykxfy8rxr3yc3d4dtqq4dpas4zz3xl6sh873us3vajlpshzp69d"
-# STAKE_TOKEN_ADDRESS="juno10ynpq4wchr4ruu6mhrfh29495ep4cja5vjnkhz3j5lrgcsap9vtssyeekl"
+NODE="--node https://rpc-juno.itastakers.com:443"
+CHAIN_ID=juno-1
+DENOM="ujuno"
+#REWARD TOKEN is BLOCK
+REWARD_TOKEN_ADDRESS="juno1w5e6gqd9s4z70h6jraulhnuezry0xl78yltp5gtp54h84nlgq30qta23ne"
+#STAKE TOKEN is LP TOKEN for BLOCK-JUNO pool
+STAKE_TOKEN_ADDRESS="juno1cmmpty2dgs9h36vtrwxk53pmkwe3fgn5833wpay4ap0unm6svgks7aajke"
 
 ##########################################################################################
 
-NODE="--node https://rpc.juno.giansalex.dev:443"
-#NODE="--node https://rpc.uni.junomint.com:443"
-CHAIN_ID=uni-2
-DENOM="ujunox"
-REWARD_TOKEN_ADDRESS="juno1yqmcu5uw27mzkacputegtg46cx55ylwgcnatjy3mejxqdjsx3kmq5a280s"
-STAKE_TOKEN_ADDRESS="juno18hh4dflvfdcuklc9q4ghlr83fy5k4sdx6rgfzzwhdfqznsj4xjzqdsn5cc"
+# NODE="--node https://rpc.juno.giansalex.dev:443"
+# #NODE="--node https://rpc.uni.junomint.com:443"
+# CHAIN_ID=uni-2
+# DENOM="ujunox"
+# REWARD_TOKEN_ADDRESS="juno1yqmcu5uw27mzkacputegtg46cx55ylwgcnatjy3mejxqdjsx3kmq5a280s"
+# STAKE_TOKEN_ADDRESS="juno18hh4dflvfdcuklc9q4ghlr83fy5k4sdx6rgfzzwhdfqznsj4xjzqdsn5cc"
 
 ##########################################################################################
 #not depends
@@ -34,7 +36,7 @@ FILE_CODE_ID="code.txt"
 
 ADDR_WORKSHOP="juno1htjut8n7jv736dhuqnad5mcydk6tf4ydeaan4s"
 ADDR_ACHILLES="juno15fg4zvl8xgj3txslr56ztnyspf3jc7n9j44vhz"
-ADDR_CEM="juno14u54rmpw78wux6vvrdx2vpdh998aaxxmrn6p7s"
+# ADDR_ADMIN="juno14u54rmpw78wux6vvrdx2vpdh998aaxxmrn6p7s"
 
 ###################################################################################################
 ###################################################################################################
@@ -131,7 +133,7 @@ Instantiate() {
     
     #read from FILE_CODE_ID
     CODE_ID=$(cat $FILE_CODE_ID)
-    junod tx wasm instantiate $CODE_ID '{"owner":"'$ADDR_WORKSHOP'", "reward_token_address":"'$REWARD_TOKEN_ADDRESS'", "STAKE_TOKEN_ADDRESS":"'$STAKE_TOKEN_ADDRESS'", "daily_reward_amount":"300000000000000", "apy_prefix":"109500000", "reward_interval":3600}' --label "Marble Incentive" $WALLET $TXFLAG -y
+    junod tx wasm instantiate $CODE_ID '{"owner":"'$ADDR_WORKSHOP'", "reward_token_address":"'$REWARD_TOKEN_ADDRESS'", "stake_token_address":"'$STAKE_TOKEN_ADDRESS'", "daily_reward_amount":"10000", "apy_prefix":"10000", "reward_interval":1000}' --label "Marble Incentive" $WALLET $TXFLAG -y
 }
 
 #Get Instantiated Contract Address
@@ -198,7 +200,7 @@ Unstake() {
 
 UpdateConfig() {
     CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod tx wasm execute $CONTRACT_INCENTIVE '{"update_config":{"new_owner":"'$ADDR_CEM'"}}' $WALLET $TXFLAG -y
+    junod tx wasm execute $CONTRACT_INCENTIVE '{"update_config":{"new_owner":"'$ADDR_ADMIN'"}}' $WALLET $TXFLAG -y
 }
 
 UpdateConstants() {
