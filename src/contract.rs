@@ -20,10 +20,9 @@ use crate::state::{
 };
 
 // Version info, for migration info
-const CONTRACT_NAME: &str = "gfotstaking";
+const CONTRACT_NAME: &str = "marbleincentive";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-// const DAILY_FOT_AMOUNT:u128 = 100_000_000_000_000u128;
 const MULTIPLE:u128 = 10_000_000_000u128;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -41,12 +40,11 @@ pub fn instantiate(
 
     let config = Config {
         owner: Some(owner),
-        fot_token_address: msg.fot_token_address,
-        bfot_token_address:msg.bfot_token_address,
-        gfot_token_address: msg.gfot_token_address,
-        fot_amount: Uint128::zero(),
-        gfot_amount: Uint128::zero(),
-        daily_fot_amount: msg.daily_fot_amount,
+        reward_token_address: msg.reward_token_address,
+        stake_token_address: msg.stake_token_address,
+        reward_amount: Uint128::zero(),
+        stake_amount: Uint128::zero(),
+        daily_reward_amount: msg.daily_reward_amount,
         apy_prefix: msg.apy_prefix,
         reward_interval: msg.reward_interval
     };
@@ -64,10 +62,10 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::UpdateConfig { new_owner } => execute_update_config(deps, info, new_owner),
-        ExecuteMsg::UpdateConstants { daily_fot_amount, apy_prefix , reward_interval} => execute_update_constants(deps, info, daily_fot_amount, apy_prefix, reward_interval),
+        ExecuteMsg::UpdateConstants { daily_reward_amount, apy_prefix , reward_interval} => execute_update_constants(deps, info, daily_reward_amount, apy_prefix, reward_interval),
         ExecuteMsg::Receive(msg) => try_receive(deps, env, info, msg),
-        ExecuteMsg::WithdrawFot {} => try_withdraw_fot(deps, env, info),
-        ExecuteMsg::WithdrawGFot {} => try_withdraw_gfot(deps, env, info),
+        ExecuteMsg::WithdrawReward {} => try_withdraw_reward(deps, env, info),
+        ExecuteMsg::WithdrawStake {} => try_withdraw_stake(deps, env, info),
         ExecuteMsg::ClaimReward {} => try_claim_reward(deps, env, info),
         ExecuteMsg::Unstake {} => try_unstake(deps, env, info),
         ExecuteMsg::AddStakers { stakers } => execute_add_stakers(deps, info, stakers),
@@ -98,8 +96,8 @@ pub fn update_reward (
     let cfg = CONFIG.load(storage)?;
     let delta = env.block.time.seconds() / cfg.reward_interval - last_time / cfg.reward_interval;
     
-    if cfg.gfot_amount > Uint128::zero() && amount > Uint128::zero() && delta > 0 {
-        reward += cfg.daily_fot_amount * Uint128::from(delta) * amount / cfg.gfot_amount;
+    if cfg.stake_amount > Uint128::zero() && amount > Uint128::zero() && delta > 0 {
+        reward += cfg.daily_reward_amount * Uint128::from(delta) * amount / cfg.stake_amount;
         STAKERS.save(storage, address.clone(), &(amount, reward, env.block.time.seconds()))?;
     }
 
@@ -121,13 +119,13 @@ pub fn try_receive(
     let user_addr = &deps.api.addr_validate(&wrapper.sender)?;
 
     // Staking case
-    if info.sender == cfg.gfot_token_address {
+    if info.sender == cfg.stake_token_address {
         update_reward(deps.storage, deps.api, env, user_addr.clone(), None)?;
         let (mut amount, mut reward, mut last_time) = STAKERS.load(deps.storage, user_addr.clone())?;
         amount += wrapper.amount;
         STAKERS.save(deps.storage, user_addr.clone(), &(amount, reward, last_time))?;
         
-        cfg.gfot_amount = cfg.gfot_amount + wrapper.amount;
+        cfg.stake_amount = cfg.stake_amount + wrapper.amount;
         CONFIG.save(deps.storage, &cfg)?;
 
         return Ok(Response::new()
@@ -137,9 +135,9 @@ pub fn try_receive(
                 attr("amount", wrapper.amount)
             ]));
 
-    } else if info.sender == cfg.fot_token_address {
+    } else if info.sender == cfg.reward_token_address {
         //Just receive in contract cache and update config
-        cfg.fot_amount = cfg.fot_amount + wrapper.amount;
+        cfg.reward_amount = cfg.reward_amount + wrapper.amount;
         CONFIG.save(deps.storage, &cfg)?;
 
         return Ok(Response::new()
@@ -168,11 +166,11 @@ pub fn try_claim_reward(
     if reward == Uint128::zero() {
         return Err(ContractError::NoReward {});
     }
-    if cfg.fot_amount < Uint128::from(reward) {
-        return Err(ContractError::NotEnoughFOT {});
+    if cfg.reward_amount < Uint128::from(reward) {
+        return Err(ContractError::NotEnoughReward {});
     }
     
-    cfg.fot_amount -= Uint128::from(reward);
+    cfg.reward_amount -= Uint128::from(reward);
     CONFIG.save(deps.storage, &cfg)?;
     
     if amount == Uint128::zero() {
@@ -182,7 +180,7 @@ pub fn try_claim_reward(
     }
 
     let exec_cw20_transfer = WasmMsg::Execute {
-        contract_addr: cfg.fot_token_address.clone().into(),
+        contract_addr: cfg.reward_token_address.clone().into(),
         msg: to_binary(&Cw20ExecuteMsg::Transfer {
             recipient: info.sender.clone().into(),
             amount: Uint128::from(reward),
@@ -196,7 +194,7 @@ pub fn try_claim_reward(
         .add_attributes(vec![
             attr("action", "claim_reward"),
             attr("address", info.sender.clone()),
-            attr("fot_amount", Uint128::from(reward)),
+            attr("reward_amount", Uint128::from(reward)),
         ]));
 }
 
@@ -213,11 +211,11 @@ pub fn try_unstake(
     if amount == Uint128::zero() {
         return Err(ContractError::NoStaked {});
     }
-    if cfg.gfot_amount < Uint128::from(amount) {
-        return Err(ContractError::NotEnoughgFOT {});
+    if cfg.stake_amount < Uint128::from(amount) {
+        return Err(ContractError::NotEnoughStake {});
     }
 
-    cfg.gfot_amount -= Uint128::from(amount);
+    cfg.stake_amount -= Uint128::from(amount);
 
     CONFIG.save(deps.storage, &cfg)?;
 
@@ -228,7 +226,7 @@ pub fn try_unstake(
     }
 
     let exec_cw20_transfer = WasmMsg::Execute {
-        contract_addr: cfg.gfot_token_address.clone().into(),
+        contract_addr: cfg.stake_token_address.clone().into(),
         msg: to_binary(&Cw20ExecuteMsg::Transfer {
             recipient: info.sender.clone().into(),
             amount: Uint128::from(amount),
@@ -242,7 +240,7 @@ pub fn try_unstake(
         .add_attributes(vec![
             attr("action", "unstake"),
             attr("address", info.sender.clone()),
-            attr("gfot_amount", Uint128::from(amount)),
+            attr("stake_amount", Uint128::from(amount)),
         ]));
 }
 
@@ -285,7 +283,7 @@ pub fn execute_update_config(
 pub fn execute_update_constants(
     deps: DepsMut,
     info: MessageInfo,
-    daily_fot_amount: Uint128,
+    daily_reward_amount: Uint128,
     apy_prefix: Uint128,
     reward_interval: u64
 ) -> Result<Response, ContractError> {
@@ -297,7 +295,7 @@ pub fn execute_update_constants(
     // if owner some validated to addr, otherwise set to none
     
     CONFIG.update(deps.storage, |mut exists| -> StdResult<_> {
-        exists.daily_fot_amount = daily_fot_amount;
+        exists.daily_reward_amount = daily_reward_amount;
         exists.apy_prefix = apy_prefix;
         exists.reward_interval = reward_interval;
         Ok(exists)
@@ -365,21 +363,21 @@ pub fn execute_remove_all_stakers(
     Ok(Response::new().add_attribute("action", "remove_all_stakers"))
 }
 
-pub fn try_withdraw_fot(deps: DepsMut, env:Env, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn try_withdraw_reward(deps: DepsMut, env:Env, info: MessageInfo) -> Result<Response, ContractError> {
     
     check_owner(&deps, &info)?;
     let mut cfg = CONFIG.load(deps.storage)?;
     
-    let fot_amount = cfg.fot_amount;
-    cfg.fot_amount = Uint128::zero();
+    let reward_amount = cfg.reward_amount;
+    cfg.reward_amount = Uint128::zero();
     CONFIG.save(deps.storage, &cfg)?;
 
     // create transfer cw20 msg
     let exec_cw20_transfer = WasmMsg::Execute {
-        contract_addr: cfg.fot_token_address.clone().into(),
+        contract_addr: cfg.reward_token_address.clone().into(),
         msg: to_binary(&Cw20ExecuteMsg::Transfer {
             recipient: info.sender.clone().into(),
-            amount: fot_amount,
+            amount: reward_amount,
         })?,
         funds: vec![],
     };
@@ -387,28 +385,28 @@ pub fn try_withdraw_fot(deps: DepsMut, env:Env, info: MessageInfo) -> Result<Res
     return Ok(Response::new()
         .add_message(exec_cw20_transfer)
         .add_attributes(vec![
-            attr("action", "fot_withdraw_all"),
+            attr("action", "reward_withdraw_all"),
             attr("address", info.sender.clone()),
-            attr("fot_amount", fot_amount),
+            attr("reward_amount", reward_amount),
         ]));
 }
 
-pub fn try_withdraw_gfot(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn try_withdraw_stake(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     
     check_owner(&deps, &info)?;
 
     let mut cfg = CONFIG.load(deps.storage)?;
-    let gfot_amount = cfg.gfot_amount;
-    cfg.gfot_amount = Uint128::zero();
+    let stake_amount = cfg.stake_amount;
+    cfg.stake_amount = Uint128::zero();
 
     CONFIG.save(deps.storage, &cfg)?;
 
     // create transfer cw20 msg
     let exec_cw20_transfer = WasmMsg::Execute {
-        contract_addr: cfg.gfot_token_address.clone().into(),
+        contract_addr: cfg.stake_token_address.clone().into(),
         msg: to_binary(&Cw20ExecuteMsg::Transfer {
             recipient: info.sender.clone().into(),
-            amount: gfot_amount,
+            amount: stake_amount,
         })?,
         funds: vec![],
     };
@@ -416,9 +414,9 @@ pub fn try_withdraw_gfot(deps: DepsMut, env: Env, info: MessageInfo) -> Result<R
     return Ok(Response::new()
         .add_message(exec_cw20_transfer)
         .add_attributes(vec![
-            attr("action", "gfot_withdraw_all"),
+            attr("action", "stake_withdraw_all"),
             attr("address", info.sender.clone()),
-            attr("gfot_amount", gfot_amount),
+            attr("stake_amount", stake_amount),
         ]));
 }
 
@@ -442,12 +440,11 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let cfg = CONFIG.load(deps.storage)?;
     Ok(ConfigResponse {
         owner: cfg.owner.map(|o| o.into()),
-        fot_token_address: cfg.fot_token_address.into(),
-        bfot_token_address: cfg.bfot_token_address.into(),
-        gfot_token_address: cfg.gfot_token_address.into(),
-        fot_amount: cfg.fot_amount,
-        gfot_amount: cfg.gfot_amount,
-        daily_fot_amount: cfg.daily_fot_amount,
+        reward_token_address: cfg.reward_token_address.into(),
+        stake_token_address: cfg.stake_token_address.into(),
+        reward_amount: cfg.reward_amount,
+        stake_amount: cfg.stake_amount,
+        daily_reward_amount: cfg.daily_reward_amount,
         apy_prefix: cfg.apy_prefix,
         reward_interval: cfg.reward_interval
     })
@@ -505,42 +502,25 @@ fn query_list_stakers(
 
 pub fn query_apy(deps: Deps) -> StdResult<Uint128> {
     let cfg = CONFIG.load(deps.storage)?;
-    let total_staked_gfot = cfg.gfot_amount;
-    if total_staked_gfot == Uint128::zero() {
+    let total_staked = cfg.stake_amount;
+    if total_staked == Uint128::zero() {
         return Ok(Uint128::zero());
     }
     // For integer handling, return apy * MULTIPLE(10^10)
 
-    // gFot_minting_cost: This is calculated by 1 / (GFOT current supply / 10^10 + 10000)
-    let gfot_token_info: TokenInfoResponse =
+    let stake_token_info: TokenInfoResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: cfg.gfot_token_address.clone().into(),
+            contract_addr: cfg.stake_token_address.clone().into(),
             msg: to_binary(&Cw20QueryMsg::TokenInfo {})?,
         }))?;
     
-    let gfot_current_supply = Uint128::from(gfot_token_info.total_supply);
+    let stake_current_supply = Uint128::from(stake_token_info.total_supply);
 
-    let gfot_rate = (gfot_current_supply.checked_div(Uint128::from(10_000_000_000u128)).unwrap())
+    let stake_rate = (stake_current_supply.checked_div(Uint128::from(10_000_000_000u128)).unwrap())
     .checked_add(Uint128::from(10000u128)).unwrap();
-    // let gfot_minting_cost = 1.0 / (gfot_rate.u128() as f64);
     
-    
-    // bFot_receiving_ratio: This is calculated by 109 - (FOT current supply - 1) / 10^16
-    // let fot_token_info: TokenInfoResponse =
-    //     deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-    //         contract_addr: cfg.fot_token_address.clone().into(),
-    //         msg: to_binary(&Cw20QueryMsg::TokenInfo {})?,
-    //     }))?;
+    Ok(cfg.apy_prefix.checked_mul(Uint128::from(MULTIPLE)).unwrap().checked_mul(Uint128::from(MULTIPLE)).unwrap().checked_div(stake_rate).unwrap().checked_div(total_staked).unwrap())
 
-    // let fot_current_supply = Uint128::from(fot_token_info.total_supply);
-    // let fot_rate = (fot_current_supply - Uint128::from(1u128)).checked_div(Uint128::from(10_000_000_000_000_000u128)).unwrap();
-    // let bfot_receiving_ratio = Uint128::from(109u128) - fot_rate;
-
-    
-    Ok(cfg.apy_prefix.checked_mul(Uint128::from(MULTIPLE)).unwrap().checked_mul(Uint128::from(MULTIPLE)).unwrap().checked_div(gfot_rate).unwrap().checked_div(total_staked_gfot).unwrap())
-
-    // Ok(cfg.apy_prefix.checked_mul(Uint128::from(MULTIPLE)).unwrap().checked_mul(bfot_receiving_ratio).unwrap().checked_div(gfot_rate).unwrap().checked_div(total_staked_gfot).unwrap())
-    // Ok(Uint128::from(365000000u128).checked_mul(bfot_receiving_ratio).unwrap().checked_div(gfot_rate).unwrap())
 }
 
 

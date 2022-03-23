@@ -7,10 +7,9 @@ use cosmwasm_std::{Uint128, Addr};
 pub struct InstantiateMsg {
     /// Owner if none set to info.sender.
     pub owner: Option<String>,
-    pub fot_token_address: Addr,
-    pub bfot_token_address: Addr,
-    pub gfot_token_address: Addr,
-    pub daily_fot_amount: Uint128,
+    pub reward_token_address: Addr,
+    pub stake_token_address: Addr,
+    pub daily_reward_amount: Uint128,
     pub apy_prefix: Uint128,
     pub reward_interval: u64
 }
@@ -32,13 +31,13 @@ pub enum ExecuteMsg {
         new_owner: Option<String>,
     },
     UpdateConstants {
-        daily_fot_amount: Uint128,
+        daily_reward_amount: Uint128,
         apy_prefix: Uint128,
         reward_interval: u64
     },
     Receive(Cw20ReceiveMsg),
-    WithdrawFot { },
-    WithdrawGFot { },
+    WithdrawReward { },
+    WithdrawStake { },
     ClaimReward { },
     Unstake {},
     AddStakers {
@@ -79,12 +78,11 @@ pub enum QueryMsg {
 #[serde(rename_all = "snake_case")]
 pub struct ConfigResponse {
     pub owner: Option<String>,
-    pub fot_token_address: String,
-    pub bfot_token_address: String,
-    pub gfot_token_address: String,
-    pub fot_amount: Uint128,
-    pub gfot_amount: Uint128,
-    pub daily_fot_amount: Uint128,
+    pub reward_token_address: String,
+    pub stake_token_address: String,
+    pub reward_amount: Uint128,
+    pub stake_amount: Uint128,
+    pub daily_reward_amount: Uint128,
     pub apy_prefix: Uint128,
     pub reward_interval: u64
 
