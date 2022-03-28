@@ -11,7 +11,7 @@ DENOM="ujuno"
 #REWARD TOKEN is BLOCK
 REWARD_TOKEN_ADDRESS="juno1w5e6gqd9s4z70h6jraulhnuezry0xl78yltp5gtp54h84nlgq30qta23ne"
 #STAKE TOKEN is LP TOKEN for BLOCK-JUNO pool
-STAKE_TOKEN_ADDRESS="juno1cmmpty2dgs9h36vtrwxk53pmkwe3fgn5833wpay4ap0unm6svgks7aajke"
+STAKE_TOKEN_ADDRESS="juno1vvr0xds27s5wpxvmtzr3d0sl224fn9vgdtzh7ja7ygezpzdr9h4qxg86rw"
 
 ##########################################################################################
 
@@ -26,7 +26,7 @@ STAKE_TOKEN_ADDRESS="juno1cmmpty2dgs9h36vtrwxk53pmkwe3fgn5833wpay4ap0unm6svgks7a
 #not depends
 NODECHAIN=" $NODE --chain-id $CHAIN_ID"
 TXFLAG=" $NODECHAIN --gas-prices 0.025$DENOM --gas auto --gas-adjustment 1.3"
-WALLET="--from workshop"
+WALLET="--from marble"
 
 WASMFILE="artifacts/marbleincentive.wasm"
 
@@ -36,6 +36,7 @@ FILE_CODE_ID="code.txt"
 
 ADDR_WORKSHOP="juno1htjut8n7jv736dhuqnad5mcydk6tf4ydeaan4s"
 ADDR_ACHILLES="juno15fg4zvl8xgj3txslr56ztnyspf3jc7n9j44vhz"
+ADDR_MARBLE="juno1gxlwgusm7mngml9kzlkmjw3fskekldxdsswvpy"
 # ADDR_ADMIN="juno14u54rmpw78wux6vvrdx2vpdh998aaxxmrn6p7s"
 
 ###################################################################################################
@@ -133,7 +134,7 @@ Instantiate() {
     
     #read from FILE_CODE_ID
     CODE_ID=$(cat $FILE_CODE_ID)
-    junod tx wasm instantiate $CODE_ID '{"owner":"'$ADDR_WORKSHOP'", "reward_token_address":"'$REWARD_TOKEN_ADDRESS'", "stake_token_address":"'$STAKE_TOKEN_ADDRESS'", "daily_reward_amount":"10000", "apy_prefix":"10000", "reward_interval":1000}' --label "Marble Incentive" $WALLET $TXFLAG -y
+    junod tx wasm instantiate $CODE_ID '{"owner":"'$ADDR_MARBLE'", "reward_token_address":"'$REWARD_TOKEN_ADDRESS'", "stake_token_address":"'$STAKE_TOKEN_ADDRESS'", "daily_reward_amount":"109500000000", "apy_prefix":"10000", "reward_interval":86400, "lock_days":1}' --label "Marble Incentive" $WALLET $TXFLAG -y
 }
 
 #Get Instantiated Contract Address
@@ -170,7 +171,7 @@ SendStake() {
 
 RemoveStaker() {
     CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod tx wasm execute $CONTRACT_INCENTIVE '{"remove_staker":{"address":"'$ADDR_WORKSHOP'"}}' $WALLET $TXFLAG -y
+    junod tx wasm execute $CONTRACT_INCENTIVE '{"remove_staker":{"address":"'$ADDR_MARBLE'"}}' $WALLET $TXFLAG -y
 }
 
 RemoveAllStakers() {
@@ -178,7 +179,7 @@ RemoveAllStakers() {
     junod tx wasm execute $CONTRACT_INCENTIVE '{"remove_all_stakers":{}}' $WALLET $TXFLAG -y
 }
 
-SendReward() {
+WithdrawReward() {
     CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
     junod tx wasm execute $CONTRACT_INCENTIVE '{"withdraw_reward":{}}' $WALLET $TXFLAG -y
 }
@@ -205,7 +206,7 @@ UpdateConfig() {
 
 UpdateConstants() {
     CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod tx wasm execute $CONTRACT_INCENTIVE '{"update_constants":{"daily_reward_amount":"300000000", "apy_prefix":"109500000", "reward_interval": 600}}' $WALLET $TXFLAG -y
+    junod tx wasm execute $CONTRACT_INCENTIVE '{"update_constants":{"daily_reward_amount":"109500000000", "apy_prefix":"1000", "reward_interval":86400, "lock_days":1}}' $WALLET $TXFLAG -y
 }
 
 PrintConfig() {
@@ -215,7 +216,7 @@ PrintConfig() {
 
 PrintStaker() {
     CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod query wasm contract-state smart $CONTRACT_INCENTIVE '{"staker":{"address":"'$ADDR_WORKSHOP'"}}' $NODECHAIN
+    junod query wasm contract-state smart $CONTRACT_INCENTIVE '{"staker":{"address":"'$ADDR_MARBLE'"}}' $NODECHAIN
 }
 
 PrintListStakers() {
@@ -232,15 +233,15 @@ PrintAPY() {
 PrintWalletBalance() {
     echo "native balance"
     echo "========================================="
-    junod query bank balances $ADDR_WORKSHOP $NODECHAIN
+    junod query bank balances $ADDR_MARBLE $NODECHAIN
     echo "========================================="
     echo "BLOCK Token balance"
     echo "========================================="
-    junod query wasm contract-state smart $REWARD_TOKEN_ADDRESS '{"balance":{"address":"'$ADDR_WORKSHOP'"}}' $NODECHAIN
+    junod query wasm contract-state smart $REWARD_TOKEN_ADDRESS '{"balance":{"address":"'$ADDR_MARBLE'"}}' $NODECHAIN
     echo "========================================="
     echo "LP Token balance"
     echo "========================================="
-    junod query wasm contract-state smart $STAKE_TOKEN_ADDRESS '{"balance":{"address":"'$ADDR_WORKSHOP'"}}' $NODECHAIN
+    junod query wasm contract-state smart $STAKE_TOKEN_ADDRESS '{"balance":{"address":"'$ADDR_MARBLE'"}}' $NODECHAIN
 }
 
 #################################### End of Function ###################################################
@@ -253,8 +254,8 @@ sleep 12
     Instantiate
 sleep 10
     GetContractAddress
-sleep 10
-    SendReward
+# sleep 10
+#     SendReward
 # sleep 7
 #     SendStake
 sleep 10

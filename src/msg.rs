@@ -11,7 +11,8 @@ pub struct InstantiateMsg {
     pub stake_token_address: Addr,
     pub daily_reward_amount: Uint128,
     pub apy_prefix: Uint128,
-    pub reward_interval: u64
+    pub reward_interval: u64,
+    pub lock_days: u64
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -19,7 +20,8 @@ pub struct StakerInfo {
     pub address: Addr,
     pub amount: Uint128,
     pub reward: Uint128,
-    pub last_time: u64
+    pub last_time: u64,
+    pub start_time: u64
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -33,13 +35,16 @@ pub enum ExecuteMsg {
     UpdateConstants {
         daily_reward_amount: Uint128,
         apy_prefix: Uint128,
-        reward_interval: u64
+        reward_interval: u64,
+        lock_days: u64
     },
     Receive(Cw20ReceiveMsg),
     WithdrawReward { },
     WithdrawStake { },
     ClaimReward { },
-    Unstake {},
+    Unstake {
+        unstake_amount: Uint128
+    },
     AddStakers {
         stakers: Vec<StakerInfo>
     },
@@ -106,7 +111,8 @@ pub struct StakerResponse {
     pub address: Addr,
     pub amount: Uint128,
     pub reward: Uint128,
-    pub last_time: u64
+    pub last_time: u64,
+    pub start_time: u64
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct CountInfo {

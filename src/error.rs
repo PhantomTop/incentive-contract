@@ -32,6 +32,10 @@ pub enum ContractError {
     #[error("Not enough Reward")]
     NotEnoughReward { },
 
+    #[error("Still in Lock period")]
+    StillInLock { },
+
+
     #[error("Already claimed")]
     Claimed {},
 
