@@ -16,7 +16,8 @@ pub struct Config {
     pub daily_reward_amount: Uint128,
     pub apy_prefix: Uint128,
     pub reward_interval: u64,
-    pub lock_days: u64
+    pub lock_days: u64,
+    pub enabled: bool
     
 }
 
@@ -24,4 +25,7 @@ pub const CONFIG_KEY: &str = "config";
 pub const CONFIG: Item<Config> = Item::new(CONFIG_KEY);
 
 pub const STAKERS_KEY: &str = "stakers";
-pub const STAKERS: Map<Addr, (Uint128, Uint128, u64, u64)> = Map::new(STAKERS_KEY);
+pub const STAKERS: Map<Addr, (Uint128, Uint128, u64)> = Map::new(STAKERS_KEY);
+
+pub const UNSTAKING_KEY: &str = "unstaking";
+pub const UNSTAKING: Map<Addr, Vec<(Uint128, u64)>> = Map::new(UNSTAKING_KEY);

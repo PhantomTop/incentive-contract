@@ -14,6 +14,9 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("Disabled")]
+    Disabled {},
+
     #[error("InvalidInput")]
     InvalidInput {},
 
@@ -23,11 +26,17 @@ pub enum ContractError {
     #[error("Not enough Stake")]
     NotEnoughStake {},
 
+    #[error("Still Locked")]
+    StillLocked {},
+
     #[error("No Reward")]
     NoReward {},
 
     #[error("No Staked")]
     NoStaked {},
+
+    #[error("Not Created Unstaking")]
+    NotCreatedUnstaking {},
 
     #[error("Not enough Reward")]
     NotEnoughReward { },

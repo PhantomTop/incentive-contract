@@ -25,7 +25,7 @@ STAKE_TOKEN_ADDRESS="juno1vvr0xds27s5wpxvmtzr3d0sl224fn9vgdtzh7ja7ygezpzdr9h4qxg
 ##########################################################################################
 #not depends
 NODECHAIN=" $NODE --chain-id $CHAIN_ID"
-TXFLAG=" $NODECHAIN --gas-prices 0.025$DENOM --gas auto --gas-adjustment 1.3"
+TXFLAG=" $NODECHAIN --gas-prices 0.003$DENOM --gas auto --gas-adjustment 1.3"
 WALLET="--from marble"
 
 WASMFILE="artifacts/marbleincentive.wasm"
@@ -134,7 +134,7 @@ Instantiate() {
     
     #read from FILE_CODE_ID
     CODE_ID=$(cat $FILE_CODE_ID)
-    junod tx wasm instantiate $CODE_ID '{"owner":"'$ADDR_MARBLE'", "reward_token_address":"'$REWARD_TOKEN_ADDRESS'", "stake_token_address":"'$STAKE_TOKEN_ADDRESS'", "daily_reward_amount":"109500000000", "apy_prefix":"10000", "reward_interval":86400, "lock_days":1}' --label "Marble Incentive" $WALLET $TXFLAG -y
+    junod tx wasm instantiate $CODE_ID '{"owner":"'$ADDR_MARBLE'", "reward_token_address":"'$REWARD_TOKEN_ADDRESS'", "stake_token_address":"'$STAKE_TOKEN_ADDRESS'", "daily_reward_amount":"109500000000", "apy_prefix":"10000", "reward_interval":86400, "lock_days":1, "enabled":true}' --label "Marble Incentive" $WALLET $TXFLAG -y
 }
 
 #Get Instantiated Contract Address
@@ -144,7 +144,7 @@ GetContractAddress() {
     
     #read from FILE_CODE_ID
     CODE_ID=$(cat $FILE_CODE_ID)
-    junod query wasm list-contract-by-code $CODE_ID $NODECHAIN --output json
+    #junod query wasm list-contract-by-code $CODE_ID $NODECHAIN --output json
     CONTRACT_ADDR=$(junod query wasm list-contract-by-code $CODE_ID $NODECHAIN --output json | jq -r '.contracts[-1]')
     
     echo "Contract Address : "$CONTRACT_ADDR
@@ -166,7 +166,7 @@ SendReward() {
 
 SendStake() {
     CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod tx wasm execute $STAKE_TOKEN_ADDRESS '{"send":{"amount":"224890846943","contract":"'$CONTRACT_INCENTIVE'","msg":""}}' $WALLET $TXFLAG -y
+    junod tx wasm execute $STAKE_TOKEN_ADDRESS '{"send":{"amount":"1000000","contract":"'$CONTRACT_INCENTIVE'","msg":""}}' $WALLET $TXFLAG -y
 }
 
 RemoveStaker() {
@@ -196,7 +196,12 @@ ClaimReward() {
 
 Unstake() {
     CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod tx wasm execute $CONTRACT_INCENTIVE '{"unstake":{}}' $WALLET $TXFLAG -y
+    junod tx wasm execute $CONTRACT_INCENTIVE '{"create_unstake":{"unstake_amount":"100000"}}' $WALLET $TXFLAG -y
+}
+
+FetchUnstake() {
+    CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
+    junod tx wasm execute $CONTRACT_INCENTIVE '{"fetch_unstake":{"index":0}}' $WALLET $TXFLAG -y
 }
 
 UpdateConfig() {
@@ -222,6 +227,11 @@ PrintStaker() {
 PrintListStakers() {
     CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
     junod query wasm contract-state smart $CONTRACT_INCENTIVE '{"list_stakers":{}}' $NODECHAIN
+}
+
+PrintUnstaking() {
+    CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
+    junod query wasm contract-state smart $CONTRACT_INCENTIVE '{"unstaking":{"address":"'$ADDR_MARBLE'"}}' $NODECHAIN
 }
 
 PrintAPY() {
@@ -259,9 +269,13 @@ sleep 10
 # sleep 7
 #     SendStake
 sleep 10
-    RemoveAllStakers
-# sleep 5
-#     Withdraw
+    SendStake
+sleep 5
+    Unstake
+sleep 5
+    PrintUnstaking
+sleep 5
+    FetchUnstake
 sleep 7
     PrintConfig
 sleep 7

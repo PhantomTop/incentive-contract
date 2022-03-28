@@ -12,7 +12,8 @@ pub struct InstantiateMsg {
     pub daily_reward_amount: Uint128,
     pub apy_prefix: Uint128,
     pub reward_interval: u64,
-    pub lock_days: u64
+    pub lock_days: u64,
+    pub enabled: bool
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -20,8 +21,7 @@ pub struct StakerInfo {
     pub address: Addr,
     pub amount: Uint128,
     pub reward: Uint128,
-    pub last_time: u64,
-    pub start_time: u64
+    pub last_time: u64
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -36,14 +36,18 @@ pub enum ExecuteMsg {
         daily_reward_amount: Uint128,
         apy_prefix: Uint128,
         reward_interval: u64,
-        lock_days: u64
+        lock_days: u64,
+        enabled: bool
     },
     Receive(Cw20ReceiveMsg),
     WithdrawReward { },
     WithdrawStake { },
     ClaimReward { },
-    Unstake {
+    CreateUnstake {
         unstake_amount: Uint128
+    },
+    FetchUnstake {
+        index: u64
     },
     AddStakers {
         stakers: Vec<StakerInfo>
@@ -76,6 +80,9 @@ pub enum QueryMsg {
     },
     Apy {
 
+    },
+    Unstaking {
+        address: Addr
     }
 }
 
@@ -89,7 +96,8 @@ pub struct ConfigResponse {
     pub stake_amount: Uint128,
     pub daily_reward_amount: Uint128,
     pub apy_prefix: Uint128,
-    pub reward_interval: u64
+    pub reward_interval: u64,
+    pub lock_days: u64
 
 }
 
@@ -111,8 +119,7 @@ pub struct StakerResponse {
     pub address: Addr,
     pub amount: Uint128,
     pub reward: Uint128,
-    pub last_time: u64,
-    pub start_time: u64
+    pub last_time: u64
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct CountInfo {
