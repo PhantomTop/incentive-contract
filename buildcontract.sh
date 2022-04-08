@@ -211,7 +211,7 @@ UpdateConfig() {
 
 UpdateConstants() {
     CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod tx wasm execute $CONTRACT_INCENTIVE '{"update_constants":{"daily_reward_amount":"1000000000", "apy_prefix":"1000", "reward_interval":86400, "lock_days":14}}' $WALLET $TXFLAG -y
+    junod tx wasm execute $CONTRACT_INCENTIVE '{"update_constants":{"daily_reward_amount":"1000000000", "apy_prefix":"1000", "reward_interval":300, "lock_days":0,"enabled":true}}' $WALLET $TXFLAG -y
 }
 
 PrintConfig() {
