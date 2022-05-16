@@ -16,9 +16,9 @@ pub struct Config {
     pub daily_reward_amount: Uint128,
     pub apy_prefix: Uint128,
     pub reward_interval: u64,
+    pub delta_time: u64,
     pub lock_days: u64,
     pub enabled: bool
-    
 }
 
 pub const CONFIG_KEY: &str = "config";

@@ -11,8 +11,12 @@ DENOM="ujuno"
 #REWARD TOKEN is BLOCK
 REWARD_TOKEN_ADDRESS="juno1y9rf7ql6ffwkv02hsgd4yruz23pn4w97p75e2slsnkm0mnamhzysvqnxaq"
 #STAKE TOKEN is LP TOKEN for BLOCK-JUNO pool
-STAKE_TOKEN_ADDRESS="juno1jzz4t6p2dpcteqay5yt4khyha0z3u3uhghzszv7c24r7pj02scwswsygzh"
+#STAKE_TOKEN_ADDRESS="juno1jzz4t6p2dpcteqay5yt4khyha0z3u3uhghzszv7c24r7pj02scwswsygzh"
 
+#BLOCK-MARBLE-LP
+#STAKE_TOKEN_ADDRESS="juno17sf282da63uwxfht9nuzslgan4jh7qvya0k78mc9v3muuckvjndsu8dy9m"
+#BLOCK-ATOM-LP
+STAKE_TOKEN_ADDRESS="juno1eqj3unwgq5najlyzyjtqdjjqx9esxpmkv2gffjsvhyszasyzwejqerpwgl"
 ##########################################################################################
 
 # NODE="--node https://rpc.juno.giansalex.dev:443"
@@ -26,7 +30,7 @@ STAKE_TOKEN_ADDRESS="juno1jzz4t6p2dpcteqay5yt4khyha0z3u3uhghzszv7c24r7pj02scwsws
 #not depends
 NODECHAIN=" $NODE --chain-id $CHAIN_ID"
 TXFLAG=" $NODECHAIN --gas-prices 0.0025$DENOM --gas auto --gas-adjustment 1.3"
-WALLET="--from marble"
+WALLET="--from new_marble"
 
 WASMFILE="artifacts/marbleincentive.wasm"
 
@@ -36,8 +40,10 @@ FILE_CODE_ID="code.txt"
 
 ADDR_WORKSHOP="juno1htjut8n7jv736dhuqnad5mcydk6tf4ydeaan4s"
 ADDR_ACHILLES="juno15fg4zvl8xgj3txslr56ztnyspf3jc7n9j44vhz"
-ADDR_MARBLE="juno1gxlwgusm7mngml9kzlkmjw3fskekldxdsswvpy"
+# ADDR_MARBLE="juno1gxlwgusm7mngml9kzlkmjw3fskekldxdsswvpy"
+ADDR_MARBLE="juno1zzru8wptsc23z2lw9rvw4dq606p8fz0z6k6ggn"
 # ADDR_ADMIN="juno14u54rmpw78wux6vvrdx2vpdh998aaxxmrn6p7s"
+ADDR_ADMIN="juno1ddcvnnq0puupr0f3cyq77ffmk32ylaxcd3ahjg"
 
 ###################################################################################################
 ###################################################################################################
@@ -134,7 +140,7 @@ Instantiate() {
     
     #read from FILE_CODE_ID
     CODE_ID=$(cat $FILE_CODE_ID)
-    junod tx wasm instantiate $CODE_ID '{"owner":"'$ADDR_MARBLE'", "reward_token_address":"'$REWARD_TOKEN_ADDRESS'", "stake_token_address":"'$STAKE_TOKEN_ADDRESS'", "daily_reward_amount":"1000000000", "apy_prefix":"10000", "reward_interval":300, "lock_days":14, "enabled":true}' --label "BLOCK- Incentive" $WALLET $TXFLAG -y
+    junod tx wasm instantiate $CODE_ID '{"owner":"'$ADDR_MARBLE'", "reward_token_address":"'$REWARD_TOKEN_ADDRESS'", "stake_token_address":"'$STAKE_TOKEN_ADDRESS'", "daily_reward_amount":"95890000000", "apy_prefix":"10000", "reward_interval":86400, "delta_time":0, "lock_days":14, "enabled":true}' --label "BLOCK-ATOM Incentive" $WALLET $TXFLAG -y
 }
 
 #Get Instantiated Contract Address
@@ -161,7 +167,7 @@ GetContractAddress() {
 #Send initial tokens
 SendReward() {
     CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod tx wasm execute $REWARD_TOKEN_ADDRESS '{"send":{"amount":"288000000000","contract":"'$CONTRACT_INCENTIVE'","msg":""}}' $WALLET $TXFLAG -y
+    junod tx wasm execute $REWARD_TOKEN_ADDRESS '{"send":{"amount":"5154298000000","contract":"'$CONTRACT_INCENTIVE'","msg":""}}' $WALLET $TXFLAG -y
 }
 
 SendStake() {
@@ -211,7 +217,7 @@ UpdateConfig() {
 
 UpdateConstants() {
     CONTRACT_INCENTIVE=$(cat $FILE_CONTRACT_ADDR)
-    junod tx wasm execute $CONTRACT_INCENTIVE '{"update_constants":{"daily_reward_amount":"1000000000", "apy_prefix":"1000", "reward_interval":300, "lock_days":0,"enabled":true}}' $WALLET $TXFLAG -y
+    junod tx wasm execute $CONTRACT_INCENTIVE '{"update_constants":{"daily_reward_amount":"10000000000", "apy_prefix":"10000", "reward_interval":300, "lock_days":0,"enabled":true}}' $WALLET $TXFLAG -y
 }
 
 PrintConfig() {

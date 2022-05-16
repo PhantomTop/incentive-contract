@@ -37,7 +37,7 @@ pub fn instantiate(
         .map_or(Ok(info.sender), |o| deps.api.addr_validate(&o))?;
 
     let config = Config {
-        owner: Some(owner),
+        owner: Some(owner.clone()),
         reward_token_address: msg.reward_token_address,
         stake_token_address: msg.stake_token_address,
         reward_amount: Uint128::zero(),
@@ -45,6 +45,7 @@ pub fn instantiate(
         daily_reward_amount: msg.daily_reward_amount,
         apy_prefix: msg.apy_prefix,
         reward_interval: msg.reward_interval,
+        delta_time: msg.delta_time,
         lock_days: msg.lock_days,
         enabled: true
     };
@@ -62,7 +63,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::UpdateConfig { new_owner } => execute_update_config(deps, info, new_owner),
-        ExecuteMsg::UpdateConstants { daily_reward_amount, apy_prefix , reward_interval, lock_days, enabled} => execute_update_constants(deps, info, daily_reward_amount, apy_prefix, reward_interval, lock_days, enabled),
+        ExecuteMsg::UpdateConstants { daily_reward_amount, apy_prefix , reward_interval, delta_time, lock_days, enabled} => execute_update_constants(deps, info, daily_reward_amount, apy_prefix, reward_interval, delta_time, lock_days, enabled),
         ExecuteMsg::Receive(msg) => try_receive(deps, env, info, msg),
         ExecuteMsg::WithdrawReward {} => try_withdraw_reward(deps, info),
         ExecuteMsg::WithdrawStake {} => try_withdraw_stake(deps, info),
@@ -74,6 +75,20 @@ pub fn execute(
         ExecuteMsg::RemoveAllStakers { start_after, limit } => execute_remove_all_stakers(deps, info, start_after, limit),
     }
 }
+
+// ++ Added: Update staked amount when unbonding is created
+// pub fn update_stake_amount (
+//     storage: &mut dyn Storage,
+//     env: Env,
+//     unstake_amount: Uint128
+// ) -> Result<Response, ContractError> {
+      
+//     let mut cfg = CONFIG.load(storage)?;
+//     cfg.stake_amount = cfg.stake_amount - unstake_amount;
+//     CONFIG.save(storage, &cfg)?;
+
+//     Ok(Response::default())
+// }
 
 pub fn update_reward (
     storage: &mut dyn Storage,
@@ -95,7 +110,7 @@ pub fn update_reward (
     STAKERS.save(storage, address.clone(), &(amount, reward, last_time))?;
 
     let cfg = CONFIG.load(storage)?;
-    let delta = env.block.time.seconds() / cfg.reward_interval - last_time / cfg.reward_interval;
+    let delta = (env.block.time.seconds() + cfg.delta_time) / cfg.reward_interval - (last_time + cfg.delta_time) / cfg.reward_interval;
     
     if cfg.stake_amount > Uint128::zero() && amount > Uint128::zero() && delta > 0 {
         reward += cfg.daily_reward_amount * Uint128::from(delta) * amount / cfg.stake_amount;
@@ -223,7 +238,7 @@ pub fn try_create_unstake(
     if cfg.stake_amount < unstake_amount {
         return Err(ContractError::NotEnoughStake {});
     }
-    
+
     let mut exists = UNSTAKING.may_load(deps.storage, info.sender.clone())?;
     let mut unstaking = vec![];
     if exists.is_some() {
@@ -234,7 +249,10 @@ pub fn try_create_unstake(
     UNSTAKING.save(deps.storage, info.sender.clone(), &unstaking)?;
 
     STAKERS.save(deps.storage, info.sender.clone(), &(amount - unstake_amount, reward, last_time))?;
-    
+
+    // ++ Added: update stake_amount excluding unstake_amount
+    // update_stake_amount(deps.storage, env.clone(), unstake_amount);
+
     return Ok(Response::new()
         .add_attributes(vec![
             attr("action", "create_unstake"),
@@ -336,6 +354,9 @@ pub fn execute_update_config(
     if let Some(addr) = new_owner {
         tmp_owner = Some(deps.api.addr_validate(&addr)?)
     }
+    if tmp_owner == None {
+        return Err(ContractError::InvalidInput {})
+    }
 
     CONFIG.update(deps.storage, |mut exists| -> StdResult<_> {
         exists.owner = tmp_owner;
@@ -351,6 +372,7 @@ pub fn execute_update_constants(
     daily_reward_amount: Uint128,
     apy_prefix: Uint128,
     reward_interval: u64,
+    delta_time: u64,
     lock_days: u64,
     enabled: bool
 ) -> Result<Response, ContractError> {
@@ -365,6 +387,7 @@ pub fn execute_update_constants(
         exists.daily_reward_amount = daily_reward_amount;
         exists.apy_prefix = apy_prefix;
         exists.reward_interval = reward_interval;
+        exists.delta_time = delta_time;
         exists.lock_days = lock_days;
         exists.enabled = enabled;
         Ok(exists)
@@ -519,6 +542,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         daily_reward_amount: cfg.daily_reward_amount,
         apy_prefix: cfg.apy_prefix,
         reward_interval: cfg.reward_interval,
+        delta_time: cfg.delta_time,
         lock_days: cfg.lock_days
     })
 }
@@ -545,7 +569,7 @@ fn query_staker(deps: Deps, address: Addr) -> StdResult<StakerResponse> {
 
 fn query_unstaking(deps: Deps, address: Addr) -> StdResult<Vec<(Uint128, u64)>> {
     
-    let mut exists = UNSTAKING.may_load(deps.storage, address.clone())?;
+    let exists = UNSTAKING.may_load(deps.storage, address.clone())?;
     let mut unstaking = vec![];
     if exists.is_some() {
         unstaking = exists.unwrap();
